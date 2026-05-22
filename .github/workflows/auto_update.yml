@@ -15,25 +15,46 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 獲取完整 Git 歷史以利 Commit
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Run Script to Download Audio and Update RSS
+      - name: Install yt-dlp
+        run: |
+          sudo add-apt-repository ppa:tomtomtom/yt-dlp -y
+          sudo apt-get update
+          sudo apt-get install yt-dlp -y
+
+      - name: Create Audio Directory
+        run: mkdir -p audio
+
+      - name: Download Latest 3 Audios via yt-dlp
+        # 這裡會自動讀取 YouTube Feed 獲取最新 3 個影片 ID 並用最高效能直接下載 M4A 音訊
+        run: |
+          curl -s "https://www.youtube.com/feeds/videos.xml?channel_id=UCAlVuubC3GE6kFFeNBEkoUQ" | grep -oP '(?<=<yt:videoId>)[^<]+' | head -n 3 | while read -r id; do
+            if [ ! -f "audio/${id}.m4a" ]; then
+              echo "📥 正在極速下載影片音訊: $id"
+              yt-dlp -x --audio-format m4a -o "audio/${id}.m4a" "https://www.youtube.com/watch?v=${id}" || true
+            else
+              echo "✅ $id 已經存在，跳過下載。"
+            fi
+          done
+
+      - name: Run Script to Update XML
         run: python update_podcast.py
 
-      - name: Commit and Push Audio Files to main
+      - name: Commit and Push to main
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add podcast.xml audio/*.m4a || true
           if git diff --staged --quiet; then
-            echo "沒有新影片下載，無須 Commit。"
+            echo "沒有任何變更，無須 Commit。"
           else
-            git commit -m "📥 自動下載最新影片音訊並更新 RSS Feed"
+            git commit -m "📥 yt-dlp 實體下載最新音訊並更新 RSS Feed"
             git push origin main
           fi
 
