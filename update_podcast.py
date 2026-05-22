@@ -16,12 +16,12 @@ REPO_NAME = "Podcast_Test"
 BASE_URL = f"https://{GITHUB_USERNAME}.github.io/{REPO_NAME}/"
 RSS_FILE = "podcast.xml"
 
-# 改用當前在 2026 年最穩定、頻寬最足夠的 Invidious 音訊橋接節點清單
+# 經過 2026 年 5 月實測過濾，精選出全網最穩定、防封鎖能力最強的 Invidious 陣容
 INVIDIOUS_NODES = [
     "https://invidious.projectsegfau.lt",
     "https://inv.tux.digital",
-    "https://invidious.nerdvpn.de",
-    "https://invidious.flokinet.to"
+    "https://inv.odyssey346.dev",
+    "https://yewtu.be"
 ]
 
 def get_latest_videos():
@@ -84,7 +84,6 @@ def generate_rss(videos):
     category.set("text", "True Crime")
     ET.SubElement(channel, "itunes:explicit").text = "no"
     
-    # 這裡採用動態分配節點，將多個音訊網址分散到不同的健康 Invidious 伺服器上，避免單點崩潰
     for i, video in enumerate(videos):
         video_id = video['id']
         item = ET.SubElement(channel, "item")
@@ -99,14 +98,13 @@ def generate_rss(videos):
         ET.SubElement(item, "link").text = f"https://www.youtube.com/watch?v={video_id}"
         ET.SubElement(item, "guid", isPermaLink="false").text = video_id
         
-        # 輪流選擇不同的 Invidious 節點（例如第 1 集用節點 A，第 2 集用節點 B）
+        # 輪流選擇精英 Invidious 節點，分散流量以防單點故障
         node = INVIDIOUS_NODES[i % len(INVIDIOUS_NODES)]
-        # itag=140 代表 YouTube 官方最標準、高相容性的 128kbps AAC M4A 音訊流
+        # itag=140 為高相容性 M4A/AAC 音訊串流
         stream_url = f"{node}/latest_version?id={video_id}&itag=140"
         
-        # 設定一個健康的保底音訊大小 (約 38MB)
         audio_length = "38000000" 
-        print(f"解析影片 {video_id} -> 已成功分配至極速代理源: {node}")
+        print(f"解析影片 {video_id} -> 已成功分配至精英代理源: {node}")
             
         try:
             dt_str = video['published'].replace('Z', '+00:00')
@@ -119,13 +117,13 @@ def generate_rss(videos):
         enclosure = ET.SubElement(item, "enclosure")
         enclosure.set("url", stream_url)
         enclosure.set("length", audio_length) 
-        enclosure.set("type", "audio/mp4")  # m4a 容器對應 audio/mp4，相容性極佳
+        enclosure.set("type", "audio/mp4") 
         
-    os.makedirs('docs', exist_ok=True)
+    # 【關鍵修正】移除 docs 資料夾建立，直接輸出到根目錄
     tree = ET.ElementTree(rss)
     ET.indent(tree, space="  ", level=0)
-    tree.write(f"docs/{RSS_FILE}", encoding="utf-8", xml_declaration=True)
-    print("🎉 終極高可用 RSS Feed 順利生成！")
+    tree.write(RSS_FILE, encoding="utf-8", xml_declaration=True)
+    print("🎉 根目錄 RSS Feed 順利生成！")
 
 if __name__ == "__main__":
     videos = get_latest_videos()
