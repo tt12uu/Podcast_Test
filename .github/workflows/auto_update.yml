@@ -2,8 +2,8 @@ name: Update YouTube Podcast Feed
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
+    - cron: '0 */6 * * *' # 每 6 小時自動跑一次
+  workflow_dispatch: # 允許手動點火
 
 jobs:
   build-and-deploy:
@@ -28,23 +28,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install yt-dlp -y
 
-      - name: Create Audio Directory
+      - name: Create Base Directories
         run: mkdir -p audio
 
-      - name: Download Latest 3 Audios via yt-dlp
-        # 這裡會自動讀取 YouTube Feed 獲取最新 3 個影片 ID 並用最高效能直接下載 M4A 音訊
-        run: |
-          curl -s "https://www.youtube.com/feeds/videos.xml?channel_id=UCAlVuubC3GE6kFFeNBEkoUQ" | grep -oP '(?<=<yt:videoId>)[^<]+' | head -n 3 | while read -r id; do
-            if [ ! -f "audio/${id}.m4a" ]; then
-              echo "📥 正在極速下載影片音訊: $id"
-              yt-dlp -x --audio-format m4a -o "audio/${id}.m4a" "https://www.youtube.com/watch?v=${id}" || true
-            else
-              echo "✅ $id 已經存在，跳過下載。"
-            fi
-          done
+      - name: Generate Cookies File From Secret
+        # 從 GitHub 后台安全變數中取出 Cookie，寫入虛擬機本地檔
+        run: echo "${{ secrets.YOUTUBE_COOKIES }}" > cookies.txt
 
-      - name: Run Script to Update XML
+      - name: Download Latest 3 Audios via yt-dlp with Cookies
+        # 帶埋 Cookie 去抓取頻道影片，並自動下載最新 3 集
+        run: |
+          yt-dlp --cookies cookies.txt \
+                 --playlist-end 3 \
+                 --extract-audio \
+                 --audio-format m4a \
+                 --no-postoverwrites \
+                 --ignore-errors \
+                 -o "audio/%(id)s.m4a" \
+                 "https://www.youtube.com/channel/UCAlVuubC3GE6kFFeNBEkoUQ"
+
+      - name: Run Python Script to Update XML
         run: python update_podcast.py
+
+      - name: Remove Temporary Cookies File
+        run: rm -f cookies.txt
 
       - name: Commit and Push to main
         run: |
@@ -52,9 +59,9 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add podcast.xml audio/*.m4a || true
           if git diff --staged --quiet; then
-            echo "沒有任何變更，無須 Commit。"
+            echo "沒有新集數需要更新，跳過 Commit。"
           else
-            git commit -m "📥 yt-dlp 實體下載最新音訊並更新 RSS Feed"
+            git commit -m "📥 [Cookie 認證] 自動實體下載最新音訊並更新 RSS Feed"
             git push origin main
           fi
 
