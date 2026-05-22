@@ -2,31 +2,45 @@ name: Update YouTube Podcast Feed
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # 每 6 小時自動執行一次
-  workflow_dispatch: # 允許你手動點火執行
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 賦予 Actions 寫入儲存庫的權限
+      contents: write
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 獲取完整 Git 歷史以利 Commit
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Run Script to Generate RSS
+      - name: Run Script to Download Audio and Update RSS
         run: python update_podcast.py
 
-      - name: Deploy to GitHub Pages (Force Push Root)
+      - name: Commit and Push Audio Files to main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add podcast.xml audio/*.m4a || true
+          if git diff --staged --quiet; then
+            echo "沒有新影片下載，無須 Commit。"
+          else
+            git commit -m "📥 自動下載最新影片音訊並更新 RSS Feed"
+            git push origin main
+          fi
+
+      - name: Deploy to GitHub Pages (Publish Root)
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: . # 【關鍵】直接將目前執行的根目錄發佈
-          branch: gh-pages # 發佈到 gh-pages 分支（GitHub Pages 專用）
-          target-folder: . # 放喺 gh-pages 嘅根目錄
-          clean: false # 不要刪除其他檔案（例如 update_podcast.py）
+          folder: .
+          branch: gh-pages
+          target-folder: .
+          clean: false
