@@ -2,7 +2,6 @@ import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import urllib.request
-import re
 
 # ==================== 配置區域 ====================
 CHANNEL_ID = "UCAlVuubC3GE6kFFeNBEkoUQ" 
@@ -27,7 +26,7 @@ def get_latest_videos():
         data = response.read()
         root = ET.fromstring(data)
         
-        # 修正及補充完整的命名空間字典
+        # 完整的命名空間字典
         ns = {
             'ns': 'http://www.w3.org/2005/Atom', 
             'yt': 'http://www.youtube.com/xml/schemas/2015',
@@ -40,7 +39,7 @@ def get_latest_videos():
             title = entry.find('ns:title', ns).text
             published = entry.find('ns:published', ns).text
             
-            # 精確定位 media:group 裡面的 media:description 抓取影片描述
+            # 精確定位 media:group 抓取影片描述
             media_group = entry.find('media:group', ns)
             desc_text = ""
             if media_group is not None:
@@ -84,13 +83,14 @@ def generate_rss(videos):
         item = ET.SubElement(channel, "item")
         ET.SubElement(item, "title").text = video['title']
         
-        # 使用 content:encoded 確保影片資訊欄內嘅換行同符號唔會整爛 XML 格式
-        ET.SubElement(item, "description").text = video['description']
-        content_encoded = ET.SubElement(item, "content:encoded")
-        # 修正：將原本的空字串替換改成換行符（\n）替換為 <br>
-        content_encoded.text = f"<![CDATA[{video['description'].replace('\n', '<br>') if video['description'] else ''}]]>"
+        # 修正：直接安全寫入描述，讓 ElementTree 自動轉義處理，不手動拼接 CDATA
+        desc_content = video['description'] if video['description'] else ''
+        ET.SubElement(item, "description").text = desc_content
         
-        # 修正：更新為運作正常的公共 Piped 節點（Adminforge 德國節點）
+        content_encoded = ET.SubElement(item, "content:encoded")
+        content_encoded.text = desc_content.replace('\n', '<br>')
+        
+        # 使用你測試過、正常運作的 Adminforge 德國節點
         stream_url = f"https://pipedapi.adminforge.de/videoplayback?id={video_id}&itype=mp3"
         
         ET.SubElement(item, "link").text = f"https://www.youtube.com/watch?v={video_id}"
