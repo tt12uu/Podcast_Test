@@ -40,7 +40,7 @@ def get_latest_videos():
             title = entry.find('ns:title', ns).text
             published = entry.find('ns:published', ns).text
             
-            # 修正：精確定位 media:group 裡面的 media:description 抓取影片描述
+            # 精確定位 media:group 裡面的 media:description 抓取影片描述
             media_group = entry.find('media:group', ns)
             desc_text = ""
             if media_group is not None:
@@ -87,7 +87,11 @@ def generate_rss(videos):
         # 使用 content:encoded 確保影片資訊欄內嘅換行同符號唔會整爛 XML 格式
         ET.SubElement(item, "description").text = video['description']
         content_encoded = ET.SubElement(item, "content:encoded")
-        content_encoded.text = f"<![CDATA[{video['description'].replace('', '<br>') if video['description'] else ''}]]>"
+        # 修正：將原本的空字串替換改成換行符（\n）替換為 <br>
+        content_encoded.text = f"<![CDATA[{video['description'].replace('\n', '<br>') if video['description'] else ''}]]>"
+        
+        # 修正：更新為運作正常的公共 Piped 節點（Adminforge 德國節點）
+        stream_url = f"https://pipedapi.adminforge.de/videoplayback?id={video_id}&itype=mp3"
         
         ET.SubElement(item, "link").text = f"https://www.youtube.com/watch?v={video_id}"
         ET.SubElement(item, "guid", isPermaLink="false").text = video_id
@@ -100,10 +104,6 @@ def generate_rss(videos):
         except:
             pub_date = datetime.now().strftime("%a, %d %b %Y %H:%M:%S +0000")
         ET.SubElement(item, "pubDate").text = pub_date
-        
-        # 升級：改用全球更穩定、頻寬更大嘅公共 Piped 節點作為音訊串流代理
-        # 咁樣可以確保你喺車上面聽個陣唔會斷斷續續
-        stream_url = f"https://piped-api.kavin.rocks/videoplayback?id={video_id}&itype=mp3"
         
         enclosure = ET.SubElement(item, "enclosure")
         enclosure.set("url", stream_url)
