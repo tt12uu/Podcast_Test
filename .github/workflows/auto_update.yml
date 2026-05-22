@@ -39,9 +39,9 @@ jobs:
           echo "✅ cookies.txt 經環境變數安全還原！"
 
       - name: Download Latest 3 Audios via yt-dlp with Cookies
-        # 【修正】將 --no-postoverwrites 改為 --no-postoverwrite
+        # 【終極精簡】拔除 --no-postoverwrite，直接交給 yt-dlp 預設排重
         run: |
-          yt-dlp --cookies cookies.txt --playlist-end 3 --extract-audio --audio-format m4a --no-postoverwrite --ignore-errors -o "audio/%(id)s.m4a" "https://www.youtube.com/channel/UCAlVuubC3GE6kFFeNBEkoUQ/videos"
+          yt-dlp --cookies cookies.txt --playlist-end 3 --extract-audio --audio-format m4a --ignore-errors -o "audio/%(id)s.m4a" "https://www.youtube.com/channel/UCAlVuubC3GE6kFFeNBEkoUQ/videos"
 
       - name: Run Python Script to Update XML
         run: python update_podcast.py
@@ -57,7 +57,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "沒有新集數需要更新，跳過 Commit。"
           else
-            git commit -m "📥 [Fix Option] 自動實體下載最新音訊並更新 RSS Feed"
+            git commit -m "📥 [Streamlined] 自動實體下載最新音訊並更新 RSS Feed"
             git push origin main
           fi
 
