@@ -2,8 +2,8 @@ name: Update YouTube Podcast Feed
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # 每 6 小時自動跑一次
-  workflow_dispatch: # 允許手動點火
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -32,11 +32,13 @@ jobs:
         run: mkdir -p audio
 
       - name: Generate Cookies File From Secret
-        # 從 GitHub 后台安全變數中取出 Cookie，寫入虛擬機本地檔
-        run: echo "${{ secrets.YOUTUBE_COOKIES }}" > cookies.txt
+        # 【全防禦修正】自動刪除多餘的 Windows 換行符（\r），確保 Unix 格式正確
+        run: |
+          echo "${{ secrets.YOUTUBE_COOKIES }}" | tr -d '\r' > cookies.txt
+          echo "🔑 Cookie 檔案已安全生成。"
 
       - name: Download Latest 3 Audios via yt-dlp with Cookies
-        # 帶埋 Cookie 去抓取頻道影片，並自動下載最新 3 集
+        # 【精準修正】改為直接爬取 /videos 頁面，效率更高
         run: |
           yt-dlp --cookies cookies.txt \
                  --playlist-end 3 \
@@ -45,7 +47,7 @@ jobs:
                  --no-postoverwrites \
                  --ignore-errors \
                  -o "audio/%(id)s.m4a" \
-                 "https://www.youtube.com/channel/UCAlVuubC3GE6kFFeNBEkoUQ"
+                 "https://www.youtube.com/channel/UCAlVuubC3GE6kFFeNBEkoUQ/videos"
 
       - name: Run Python Script to Update XML
         run: python update_podcast.py
