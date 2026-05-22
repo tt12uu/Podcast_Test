@@ -2,41 +2,31 @@ name: Update YouTube Podcast Feed
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # 每 6 小時自動更新
-  workflow_dispatch: # 允許手動點擊按鈕更新
+    - cron: '0 */6 * * *' # 每 6 小時自動執行一次
+  workflow_dispatch: # 允許你手動點火執行
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
-    # 核心修正：強制 GitHub Actions 套件使用最新的 Node.js 24 運行
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      contents: write # 賦予 Actions 寫入儲存庫的權限
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Install System Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
+      - name: Run Script to Generate RSS
+        run: python update_podcast.py
 
-    - name: Install Python Dependencies
-      run: |
-        pip install yt-dlp
-
-    - name: Run Script to Download & Generate RSS
-      run: |
-        python update_podcast.py
-
-    - name: Deploy to GitHub Pages Branch
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        folder: docs
-        branch: gh-pages
+      - name: Deploy to GitHub Pages (Force Push Root)
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: . # 【關鍵】直接將目前執行的根目錄發佈
+          branch: gh-pages # 發佈到 gh-pages 分支（GitHub Pages 專用）
+          target-folder: . # 放喺 gh-pages 嘅根目錄
+          clean: false # 不要刪除其他檔案（例如 update_podcast.py）
