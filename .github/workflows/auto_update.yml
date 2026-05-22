@@ -8,6 +8,11 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    
+    # 核心修正：強制 GitHub Actions 套件使用最新的 Node.js 24 運行
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
