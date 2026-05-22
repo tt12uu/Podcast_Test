@@ -5,7 +5,7 @@ import yt_dlp
 
 # ==================== 已為你完成配置 ====================
 YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@DangerousPerson2.0" 
-PODCAST_TITLE = "不正常研究室 / 異色檔案 (Audio)"
+PODCAST_TITLE = "危險人物 Dangerous Person 2.0 (Audio)"
 PODCAST_DESCRIPTION = "自動將異色檔案 YouTube 頻道轉換為 iPhone Podcast 訂閱源"
 # 這裡會自動抓取你 GitHub 的用戶名和倉庫名
 GITHUB_USERNAME = os.environ.get('GITHUB_REPOSITORY', '').split('/')[0]
