@@ -31,23 +31,16 @@ jobs:
       - name: Create Base Directories
         run: mkdir -p audio
 
-      - name: Generate Cookies File From Secret
-        # 【全防禦修正】自動刪除多餘的 Windows 換行符（\r），確保 Unix 格式正確
+      - name: Decode Cookies File From Secret
+        # 【終極修正】從 Secret 讀取 Base64 字串，並在 Linux 內精準還原為標準 Netscape 檔案
         run: |
-          echo "${{ secrets.YOUTUBE_COOKIES }}" | tr -d '\r' > cookies.txt
-          echo "🔑 Cookie 檔案已安全生成。"
+          echo "${{ secrets.YOUTUBE_COOKIES }}" | base64 -d > cookies.txt
+          echo "✅ cookies.txt 經 Base64 解碼還原成功！"
 
       - name: Download Latest 3 Audios via yt-dlp with Cookies
-        # 【精準修正】改為直接爬取 /videos 頁面，效率更高
+        # 帶上完美還原的實體 cookies.txt 執行下載
         run: |
-          yt-dlp --cookies cookies.txt \
-                 --playlist-end 3 \
-                 --extract-audio \
-                 --audio-format m4a \
-                 --no-postoverwrites \
-                 --ignore-errors \
-                 -o "audio/%(id)s.m4a" \
-                 "https://www.youtube.com/channel/UCAlVuubC3GE6kFFeNBEkoUQ/videos"
+          yt-dlp --cookies cookies.txt --playlist-end 3 --extract-audio --audio-format m4a --no-postoverwrites --ignore-errors -o "audio/%(id)s.m4a" "https://www.youtube.com/channel/UCAlVuubC3GE6kFFeNBEkoUQ/videos"
 
       - name: Run Python Script to Update XML
         run: python update_podcast.py
@@ -63,7 +56,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "沒有新集數需要更新，跳過 Commit。"
           else
-            git commit -m "📥 [Cookie 認證] 自動實體下載最新音訊並更新 RSS Feed"
+            git commit -m "📥 [Base64 Cookie 認證] 自動實體下載最新音訊並更新 RSS Feed"
             git push origin main
           fi
 
